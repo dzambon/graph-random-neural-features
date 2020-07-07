@@ -6,10 +6,10 @@ def read(fname):
 
 setup(
     name='grnf',
-    version='0.1.0',
+    version='0.2.0',
     author='Daniele Zambon',
     author_email='daniele.zambon@usi.ch',
     description=('Graph Random Neural Features.'),
     long_description=read('README.md'),
-    packages=['grnf']
+    packages=['grnf', 'grnf.tf', 'grnf.torch']
 )

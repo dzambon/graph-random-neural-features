@@ -1,0 +1,4 @@
+from .graph_neural_features import GraphRandomNeuralFeatures, ChunkGraphRandomNeuralFeatures
+from .graph_neural_features import count_parameters
+GRNF = GraphRandomNeuralFeatures
+cGRNF = ChunkGraphRandomNeuralFeatures
