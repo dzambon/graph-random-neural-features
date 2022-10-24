@@ -6,14 +6,22 @@ The theoretical guarantees that accompany GRNF ensure that the considered graph 
 
 The following is the reference paper:
 
-#### [Graph Random Neural Features for Distance-Preserving Graph Representations](https://arxiv.org/abs/1909.03790).
+#### [Graph Random Neural Features for Distance-Preserving Graph Representations](https://proceedings.mlr.press/v119/zambon20a.html).
 
 ```
 @inproceedings{zambon2020graph,
   title={Graph Random Neural Features for Distance-Preserving Graph Representations},
-  author={Daniele Zambon, Cesare Alippi and Lorenzo Livi},
+  author={Zambon, Daniele and Alippi, Cesare and Livi, Lorenzo},
+  booktitle={Proceedings of the 37th International Conference on Machine Learning (ICML)},
+  pages={10968--10977},
+  editor={Hal Daumé III and Aarti Singh},
+  volume={119},
+  series={Proceedings of Machine Learning Research},
+  address={Virtual},
   year={2020},
-  booktitle={To appear in International Conference on Machine Learning (ICML) 2020},
+  month={13--18 Jul},
+  publisher={PMLR},
+  pdf={http://proceedings.mlr.press/v119/zambon20a/zambon20a.pdf},
 }
 ```
 
