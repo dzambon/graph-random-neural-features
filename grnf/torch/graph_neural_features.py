@@ -21,13 +21,13 @@ def get_initializer(initializer_object):
     else:
         return torch.nn.init.__dict__.get(initializer_object)
 
-def get_normalization_factors(normalize, num_nodes, device):
+def get_normalization_factors(normalize, num_nodes, batch, device):
     r""" Replicates the normalization factor to (batch_size, 1) (num_tot_nodes|batch, 1) """
     fact_b = torch.ones(1, device=device)
     fact_n = torch.ones(1, device=device)
     if normalize:
         fact_b = fact_b / num_nodes
-        fact_n = fact_b.repeat_interleave(num_nodes).unsqueeze(1)
+        fact_n = fact_b[batch].unsqueeze(1)
         fact_b = fact_b.unsqueeze(1)
     return fact_n, fact_b
 
@@ -207,7 +207,7 @@ class _NeuralFeatures(torch.nn.Module):
         
         # normalization
         num_nodes = scatter_add(src=torch.ones(data.batch.shape, device=self._device, dtype=torch.long), index=data.batch, dim=0)
-        fact_n, fact_b = get_normalization_factors(self._normalize, num_nodes, device=self._device)
+        fact_n, fact_b = get_normalization_factors(self._normalize, num_nodes, data.batch, device=self._device)
         batch_size = len(num_nodes)
 
         # Compact representation
@@ -316,7 +316,7 @@ class NeuralFeatures1(_NeuralFeatures):
         # op5 - (1)(2)(3) + (123) + (12)(3) + (13)(2) + (23)(1) - tile sum of all entries
         repr_eq_sum.add_(torch.einsum("bf, mhf -> bmh", repr_compact["sum_all"], self.kernel_equiv[:, 4, ...]))
         
-        repr_eq.add_(repr_eq_sum.repeat_interleave(num_nodes, axis=0))
+        repr_eq.add_(repr_eq_sum[data.batch, ...])
 
         #bias
         if self.use_bias:
@@ -450,8 +450,8 @@ class NeuralFeatures2(_NeuralFeatures):
         # op15 - sum of all ops - place sum of all entries in all entries
         repr_eq_rep_all.add_(torch.einsum("bf, mdf -> bmd", repr_compact["sum_all"], self.kernel_equiv[:, 14, ...]))
 
-        repr_eq_set_diag.add_(repr_eq_rep_diag.repeat_interleave(num_nodes, dim=0))
-        repr_eq_rep_col.add_(repr_eq_rep_all.repeat_interleave(num_nodes, dim=0))
+        repr_eq_set_diag.add_(repr_eq_rep_diag[data.batch, ...])
+        repr_eq_rep_col.add_(repr_eq_rep_all[data.batch, ...])
 
         if self.use_bias:
             # bias can be directly addded here
@@ -461,24 +461,12 @@ class NeuralFeatures2(_NeuralFeatures):
         # auxiliary variables
         n_, m_, b_, d_ = data.batch.shape[0], self.num_grnf, num_nodes.shape[0], self.num_hidden_features
         arange_ = torch.arange(n_, dtype=torch.long, device=self._device)  # .unsqueeze_(0)
-        # tensors arange_repint_ and arange_repeat_ list the indices row-wise and column-wise
-        num_nodes_num_nodes = num_nodes.repeat_interleave(num_nodes)
-        arange_repint_ = arange_.repeat_interleave(num_nodes_num_nodes).unsqueeze(0)
-        ll_idx, ll_full, ct = [], [], torch.zeros((1,), dtype=torch.long, device=self._device)
-        for b in range(0, len(num_nodes)):
-            ll_idx += [ct + torch.arange(num_nodes[b], dtype=torch.long, device=self._device)] * int(num_nodes[b])
-            # this combines already the sum of rows and cols
-            ll_full += [(repr_eq_rep_row[ct: ct + num_nodes[b]].unsqueeze(0) \
-                         + repr_eq_rep_col[ct: ct + num_nodes[b]].unsqueeze(1) \
-                         ).reshape(-1, self.num_grnf, self.num_hidden_features)]
-            ct.add_(num_nodes[b])
+        batch_edges = torch.nonzero(data.batch.unsqueeze(0) == data.batch.unsqueeze(1), as_tuple=False).T 
+        repr_eq_rep_full = repr_eq_rep_col[batch_edges[0]] + repr_eq_rep_row[batch_edges[1]]
         
-        arange_repeat_ = torch.cat(ll_idx).unsqueeze(0)
-        repr_eq_rep_full = torch.cat(ll_full, dim=0)
-
         repr_eq_indices = torch.cat([
             arange_.repeat(2, 1),                                #diagonal
-            torch.cat([arange_repint_, arange_repeat_], dim=0),  #sum of rows and cols
+            batch_edges,                                         #sum of rows and cols
             data.edge_index,                                     #edge_attr
             data.edge_index[torch.LongTensor([1, 0])],           #edge_attr transpose
         ], dim=1)

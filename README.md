@@ -44,7 +44,9 @@ model = Model(inputs=[X_in, A_in], outputs=output)
 as well as a [PyTorch Geometric](https://github.com/rusty1s/pytorch_geometric) one:
 ```python
 from grnf.torch import GraphRandomNeuralFeatures
-grnf = GraphRandomNeuralFeatures(64)
+grnf = GraphRandomNeuralFeatures(channels=64,
+                                 in_node_channels=dataset.num_node_features,
+                                 in_edge_channels=dataset.num_edge_features)
 z = grnf(data)
 ```
 
